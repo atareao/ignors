@@ -18,12 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+use spinners::{Spinner, Spinners};
 use std::io::Cursor;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 
 pub async fn fetch_url(url: &str, filename: &str) -> Result<()> {
+    let mut spinner = Spinner::new(Spinners::Dots9,
+                                   "Downloading gitignore".into());
     let response = reqwest::get(url).await?;
+    spinner.stop_and_persist("✔", "Downloaded!".into());
     let mut file = std::fs::File::create(filename)?;
     let mut content =  Cursor::new(response.bytes().await?);
     std::io::copy(&mut content, &mut file)?;

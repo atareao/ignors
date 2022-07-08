@@ -25,7 +25,7 @@ use toml::from_str;
 
 #[derive(Deserialize, Debug)]
 pub struct Configuration {
-    pub repository: String,
+    pub url: String,
     pub templates: Vec<String>,
 }
 
@@ -40,7 +40,6 @@ fn read_file()->Result<String, Error>{
 impl Configuration {
     pub fn new()->Self{
         let config_content = read_file().unwrap();
-        println!("{}", &config_content);
         from_str(&config_content).unwrap()
     }
 }
