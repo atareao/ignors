@@ -33,9 +33,14 @@ async fn main() {
     let ans: Result<&str, InquireError> = Select::new("Select programming language?",
                                                       options)
         .prompt();
-    let url = format!("{}/{}.gitignore", configuration.url, ans.unwrap());
-    let filename = ".gitignore";
-    fetch_url(&url, filename)
-        .await
-        .unwrap()
+    match ans{
+        Ok(_) => {
+            let url = format!("{}/{}.gitignore", configuration.url, ans.unwrap());
+            let filename = ".gitignore";
+            fetch_url(&url, filename)
+                .await
+                .unwrap()
+        },
+        Err(_) => println!("Nothing selected"),
+    }
 }
