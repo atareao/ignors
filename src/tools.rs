@@ -18,25 +18,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-mod configuration;
-mod tools;
-
-use inquire::{error::InquireError, Select};
-use crate::configuration::Configuration;
-use crate::tools::fetch_url;
+use std::io::Cursor;
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 
-#[tokio::main]
-async fn main() {
-    let configuration = Configuration::new();
-    let options: Vec<&str> = configuration.templates.iter().map(|s| &**s).collect();
-    let ans: Result<&str, InquireError> = Select::new("Select programming language?",
-                                                      options)
-        .prompt();
-    println!("{:?}", ans);
-    let url = format!("https://raw.githubusercontent.com/github/gitignore/main/{}.gitignore", ans.unwrap());
-    let filename = ".gitignore";
-    fetch_url(&url, filename)
-        .await
-        .unwrap()
+pub async fn fetch_url(url: &str, filename: &str) -> Result<()> {
+    let response = reqwest::get(url).await?;
+    let mut file = std::fs::File::create(filename)?;
+    let mut content =  Cursor::new(response.bytes().await?);
+    std::io::copy(&mut content, &mut file)?;
+    Ok(())
 }
