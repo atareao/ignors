@@ -17,29 +17,36 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-use std::fs;
 use std::io::Error;
+use log::info;
 use serde::Deserialize;
 use home::home_dir;
 use toml::from_str;
 
 #[derive(Deserialize, Debug)]
 pub struct Configuration {
+    log_level: String,
     pub url: String,
     pub templates: Vec<String>,
 }
+impl Configuration{
+    pub fn get_log_level(&self) -> &str{
+        &self.log_level
+    }
+}
 
-fn read_file()->Result<String, Error>{
+async fn read_file()->Result<String, Error>{
     let mut config_dir = home_dir().unwrap();
     config_dir.push(".config");
     config_dir.push("ignors");
     config_dir.push("ignors.toml");
-    fs::read_to_string(config_dir.to_str().unwrap())
+    info!("config_dir: {:?}", config_dir);
+    tokio::fs::read_to_string(config_dir.to_str().unwrap()).await
 }
 
 impl Configuration {
-    pub fn new()->Self{
-        let config_content = read_file().unwrap();
+    pub async fn new()->Self{
+        let config_content = read_file().await.unwrap();
         from_str(&config_content).unwrap()
     }
 }
