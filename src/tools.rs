@@ -18,10 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+use log::{error, info};
 use spinners::{Spinner, Spinners};
-use std::{io::Cursor, env, path::Path};
+use std::{io::Cursor, path::Path, path::PathBuf};
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-use tokio::fs::read_dir;
+use tokio::fs::{read_dir, File};
+use tokio::io::AsyncWriteExt;
 use async_recursion::async_recursion;
 
 pub async fn fetch_url(url: &str, filename: &str) -> Result<()> {
@@ -35,27 +37,20 @@ pub async fn fetch_url(url: &str, filename: &str) -> Result<()> {
     Ok(())
 }
 
-#[async_recursion]
-pub async fn get_git_path(path: &Path) -> Option<&Path>{
-    if path.is_symlink(){
-        return None;
-    }
-    if path.is_file(){
-        return get_git_path(path.parent().unwrap()).await;
-    };
-    if let Some(filename) = path.file_name(){
-        if filename == ".git"{
-            return path.parent();
-        }else if has_git(path).await{
-            return Some(path);
-        }else{
-            return get_git_path(path.parent().unwrap()).await;
-        }
-    }
-    None
-}
 
-pub async fn has_git(path: &Path) -> bool{
+#[async_recursion]
+pub async fn get_gitignore(path: &Path) -> Option<PathBuf>{
+    if exist_gitignore_in_path(path).await || exist_git_in_path(path).await{
+        let mut pathbuf = path.to_path_buf();
+        pathbuf.push(".gitignore");
+        Some(pathbuf)
+    }else if let Some(parent) = path.parent(){
+            get_gitignore(parent).await
+    }else{
+        None
+    }
+}
+pub async fn exist_git_in_path(path: &Path) -> bool{
     let mut entries = read_dir(path).await.expect("Cant read dir");
     loop {
         match entries.next_entry().await{
@@ -70,9 +65,31 @@ pub async fn has_git(path: &Path) -> bool{
 
                 }
             },
-            Ok(None) => {},
+            Ok(None) => return false,
             Err(e) => {
-                eprintln!("error: {}", e);
+                error!("error: {}", e);
+            }
+        }
+    }
+}
+pub async fn exist_gitignore_in_path(path: &Path) -> bool{
+    let mut entries = read_dir(path).await.expect("Cant read dir");
+    loop {
+        match entries.next_entry().await{
+            Ok(Some(entry)) => {
+                if entry.file_name() == ".gitignore"{
+                    match entry.file_type().await{
+                        Ok(filetype) => if filetype.is_file(){
+                            return true;
+                        }
+                        Err(_) => {},
+                    }
+
+                }
+            },
+            Ok(None) => return false,
+            Err(e) => {
+                error!("error: {}", e);
             }
         }
     }
@@ -85,9 +102,25 @@ pub async fn file_exists(path: &str) -> bool{
     false
 }
 
-pub async fn is_git_dir(path: &str) -> bool{
-    if let Ok(metadata) = tokio::fs::metadata(path).await{
-        return metadata.is_dir();
+pub async fn add_content_to_file(path: &str, items: Vec<&str>){
+    let content: String = if !file_exists(path).await{
+        tokio::fs::read_to_string(path).await.expect("Cant read file")
+    }else{
+        "".to_string()
+    };
+    let mut contents: Vec<&str> = content.split("\n").collect();
+    contents.retain(|item| !item.is_empty());
+    for item in items{
+        if !item.is_empty() && !contents.contains(&item){
+            contents.push(item);
+        }
     }
-    false
+    info!("open path: {}", path);
+    let mut file = File::create(path).await.expect("Cant read file");
+    let data = contents.join("\n");
+    info!("content: {}", data);
+    file.write_all(data.as_bytes()).await.expect("Cant write to file");
+    file.write_all(b"\n").await.expect("Cant write to file");
+    file.flush().await.expect("Cant flush file");
+    info!("writed");
 }
