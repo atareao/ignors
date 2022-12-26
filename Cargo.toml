@@ -10,7 +10,6 @@ inquire = "0.2"
 spinners = "4.1"
 serde = { version = "1.0", features = ["derive"] }
 home = "0.5"
-clap = "3.2"
 toml = "0.5"
 reqwest = "0.11"
 tokio = {version = "1", features = ["full"] }
