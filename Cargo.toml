@@ -14,4 +14,4 @@ clap = "3.2"
 toml = "0.5"
 reqwest = "0.11"
 tokio = {version = "1", features = ["full"] }
-
+async-recursion = "1"
