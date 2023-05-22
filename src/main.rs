@@ -26,7 +26,7 @@ use crate::configuration::Configuration;
 use crate::tools::{fetch_url, get_gitignore, add_content_to_file};
 use simple_logger::init_with_level;
 use std::env;
-use log::{Level, info, error};
+use log::{Level, info, error, debug};
 
 
 #[tokio::main]
@@ -41,9 +41,9 @@ async fn main() {
         _ => Level::Debug,
     };
     init_with_level(log_level).unwrap();
-    
+    debug!("{:?}", &configuration);
     let mut args: Vec<String> = env::args().collect();
-    info!("{:?}", args);
+    debug!("{:?}", args);
     if args.len() > 1{
         let path = env::current_dir().unwrap();
         let gitignore_file = get_gitignore(&path).await.unwrap();
@@ -55,12 +55,14 @@ async fn main() {
         ).await
     }else{
         let options: Vec<&str> = configuration.templates.iter().map(|s| &**s).collect();
+        debug!("{:?}", &options);
         let ans: Result<&str, InquireError> = Select::new("Select programming language?",
                                                           options)
             .prompt();
         match ans{
             Ok(_) => {
                 let url = format!("{}/{}.gitignore", configuration.url, ans.unwrap());
+                debug!("{}", url);
                 let filename = ".gitignore";
                 fetch_url(&url, filename)
                     .await

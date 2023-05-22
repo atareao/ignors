@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use log::{error, info};
+use log::{error, info, debug};
 use spinners::{Spinner, Spinners};
 use std::{io::Cursor, path::Path, path::PathBuf};
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -27,6 +27,7 @@ use tokio::io::AsyncWriteExt;
 use async_recursion::async_recursion;
 
 pub async fn fetch_url(url: &str, filename: &str) -> Result<()> {
+    info!("fetch_url");
     let mut spinner = Spinner::new(Spinners::Dots9,
                                    "Downloading gitignore".into());
     let response = reqwest::get(url).await?;
@@ -40,6 +41,8 @@ pub async fn fetch_url(url: &str, filename: &str) -> Result<()> {
 
 #[async_recursion]
 pub async fn get_gitignore(path: &Path) -> Option<PathBuf>{
+    info!("get_gitignore");
+    debug!("Path: {}", &path.to_string_lossy());
     if exist_gitignore_in_path(path).await || exist_git_in_path(path).await{
         let mut pathbuf = path.to_path_buf();
         pathbuf.push(".gitignore");
@@ -51,6 +54,7 @@ pub async fn get_gitignore(path: &Path) -> Option<PathBuf>{
     }
 }
 pub async fn exist_git_in_path(path: &Path) -> bool{
+    info!("exist_git_in_path");
     let mut entries = read_dir(path).await.expect("Cant read dir");
     loop {
         match entries.next_entry().await{
@@ -73,6 +77,7 @@ pub async fn exist_git_in_path(path: &Path) -> bool{
     }
 }
 pub async fn exist_gitignore_in_path(path: &Path) -> bool{
+    info!("exist_gitignore_in_path");
     let mut entries = read_dir(path).await.expect("Cant read dir");
     loop {
         match entries.next_entry().await{
@@ -96,6 +101,7 @@ pub async fn exist_gitignore_in_path(path: &Path) -> bool{
 }
 
 pub async fn file_exists(path: &str) -> bool{
+    info!("file_exists");
     if let Ok(metadata) = tokio::fs::metadata(path).await{
         return metadata.is_dir() || metadata.is_dir() || metadata.is_symlink();
     }
@@ -103,6 +109,7 @@ pub async fn file_exists(path: &str) -> bool{
 }
 
 pub async fn add_content_to_file(path: &str, items: Vec<&str>){
+    info!("add_content_to_file");
     let content: String = if !file_exists(path).await{
         tokio::fs::read_to_string(path).await.expect("Cant read file")
     }else{
@@ -115,10 +122,10 @@ pub async fn add_content_to_file(path: &str, items: Vec<&str>){
             contents.push(item);
         }
     }
-    info!("open path: {}", path);
+    debug!("open path: {}", path);
     let mut file = File::create(path).await.expect("Cant read file");
     let data = contents.join("\n");
-    info!("content: {}", data);
+    debug!("content: {}", data);
     file.write_all(data.as_bytes()).await.expect("Cant write to file");
     file.write_all(b"\n").await.expect("Cant write to file");
     file.flush().await.expect("Cant flush file");
